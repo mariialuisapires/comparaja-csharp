@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(ViewBag.Title ?? "ComparaJá")</title>
+    <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+<header class="site-header">
+    <nav class="nav-inner">
+        <a class="brand" href="/public">ComparaJá</a>
+        <div class="nav-links">
+            <a href="/public">Produtos</a>
+            @if (Context.Session.GetString("user") != null)
+            {
+                <a href="/admin">Admin</a>
+                <a href="/admin/logout">Sair</a>
+            }
+            else
+            {
+                <a href="/admin/login">Entrar</a>
+            }
+        </div>
+    </nav>
+</header>
+<main class="site-main">
+    @RenderBody()
+</main>
+</body>
+</html>

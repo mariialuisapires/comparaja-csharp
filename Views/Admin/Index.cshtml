@@ -1,0 +1,36 @@
+@{
+    ViewBag.Title = "Admin — Produtos";
+    var products = (IReadOnlyList<ProductSummaryItem>)ViewBag.Products;
+    var search   = (string?)ViewBag.Search;
+}
+<section class="page-header">
+    <h1>Produtos</h1>
+    <form class="search-form" method="get" action="/admin">
+        <input class="search-input" type="search" name="q" placeholder="Buscar…" value="@search" />
+        <button class="btn btn-primary" type="submit">Buscar</button>
+    </form>
+</section>
+
+<table class="admin-table">
+    <thead>
+        <tr>
+            <th>Produto</th>
+            <th>Listagens</th>
+            <th>Melhor preço</th>
+            <th>Loja</th>
+            <th>Atualizado</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var p in products)
+        {
+            <tr>
+                <td><a href="/admin/product/@p.Id">@p.DisplayName</a></td>
+                <td>@p.ListingCount</td>
+                <td>@(p.BestPrice.HasValue ? "R$ " + p.BestPrice.Value.ToString("N2") : "—")</td>
+                <td>@(p.BestSite ?? "—")</td>
+                <td>@(p.LastUpdated is not null ? p.LastUpdated[..10] : "—")</td>
+            </tr>
+        }
+    </tbody>
+</table>

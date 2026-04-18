@@ -1,0 +1,125 @@
+@using ComparadorPrecos.Domain
+@{
+    var cat      = (CategoryDef)ViewBag.Category;
+    var products = (IReadOnlyList<ProductPublicItem>)ViewBag.Products;
+    var brand    = (string?)ViewBag.Brand;
+    var minPrice = (decimal?)ViewBag.MinPrice;
+    var maxPrice = (decimal?)ViewBag.MaxPrice;
+    var sort     = (string?)ViewBag.Sort ?? "price_asc";
+    ViewBag.Title = cat.Label + " — ComparaJá";
+
+    string FilterUrl(string? b, decimal? mn, decimal? mx, string? s) =>
+        $"/public/category/{cat.Slug}?brand={b}&minPrice={mn}&maxPrice={mx}&sort={s ?? sort}";
+}
+
+<nav class="breadcrumb">
+    <a href="/public">Início</a>
+    <span>›</span>
+    <span>@cat.Label</span>
+</nav>
+
+<div class="category-page-header">
+    <span class="category-page-icon">@cat.Icon</span>
+    <h1>@cat.Label</h1>
+</div>
+
+@if (cat.Brands.Length > 0)
+{
+    <section class="brand-section">
+        <p class="brand-section-label">Você está procurando uma marca específica?</p>
+        <div class="brand-pills">
+            <a class="brand-pill @(string.IsNullOrEmpty(brand) ? "brand-pill--active" : "")"
+               href="/public/category/@cat.Slug">Todas</a>
+            @foreach (var b in cat.Brands)
+            {
+                <a class="brand-pill @(brand == b ? "brand-pill--active" : "")"
+                   href="@FilterUrl(b, minPrice, maxPrice, sort)">@b</a>
+            }
+        </div>
+    </section>
+}
+
+<section class="filter-bar">
+    <form class="filter-form" method="get" action="/public/category/@cat.Slug">
+        @if (!string.IsNullOrEmpty(brand))
+        {
+            <input type="hidden" name="brand" value="@brand" />
+        }
+        <div class="filter-group">
+            <label class="filter-label">Preço mínimo</label>
+            <input class="filter-input" type="number" name="minPrice" min="0" step="50"
+                   placeholder="R$ 0" value="@minPrice" />
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Preço máximo</label>
+            <input class="filter-input" type="number" name="maxPrice" min="0" step="50"
+                   placeholder="Sem limite" value="@maxPrice" />
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Ordenar por</label>
+            <select class="filter-select" name="sort">
+                @{ var sa = sort == "price_asc";  var sb = sort == "price_desc"; var sc = sort == "name_asc"; }
+                @if (sa) { <option value="price_asc" selected>Menor preço</option> }
+                else      { <option value="price_asc">Menor preço</option> }
+                @if (sb) { <option value="price_desc" selected>Maior preço</option> }
+                else      { <option value="price_desc">Maior preço</option> }
+                @if (sc) { <option value="name_asc" selected>Nome A–Z</option> }
+                else      { <option value="name_asc">Nome A–Z</option> }
+            </select>
+        </div>
+        <button class="btn btn-primary filter-apply-btn" type="submit">Aplicar filtros</button>
+        @if (!string.IsNullOrEmpty(brand) || minPrice.HasValue || maxPrice.HasValue || sort != "price_asc")
+        {
+            <a class="btn btn-secondary filter-clear-btn" href="/public/category/@cat.Slug">Limpar</a>
+        }
+    </form>
+</section>
+
+<div class="results-bar">
+    <p class="results-count">
+        @products.Count produto(s) encontrado(s)
+        @if (!string.IsNullOrEmpty(brand)) { <span> · Marca: <strong>@brand</strong></span> }
+        @if (minPrice.HasValue)            { <span> · A partir de <strong>R$ @minPrice.Value.ToString("N0")</strong></span> }
+        @if (maxPrice.HasValue)            { <span> · Até <strong>R$ @maxPrice.Value.ToString("N0")</strong></span> }
+    </p>
+</div>
+
+@if (products.Any())
+{
+    <div class="product-grid">
+        @foreach (var p in products)
+        {
+            <a class="product-card" href="/public/product/@p.Id">
+                <div class="card-img">
+                    @if (p.ImageUrl is not null)
+                    {
+                        <img src="@p.ImageUrl" alt="@p.DisplayName" loading="lazy" />
+                    }
+                    else
+                    {
+                        <div class="img-placeholder">@cat.Icon</div>
+                    }
+                </div>
+                <div class="card-body">
+                    <h2 class="card-title">@p.DisplayName</h2>
+                    @if (p.BestPrice.HasValue)
+                    {
+                        <p class="card-price">R$ @p.BestPrice.Value.ToString("N2")</p>
+                        <p class="card-meta">@p.BestSite · @p.StoreCount loja(s)</p>
+                    }
+                    else
+                    {
+                        <p class="card-price card-price--na">Preço indisponível</p>
+                    }
+                </div>
+            </a>
+        }
+    </div>
+}
+else
+{
+    <div class="empty-category">
+        <p class="empty-state">Nenhum produto encontrado com esses filtros.</p>
+        <a class="btn btn-primary" href="/public/category/@cat.Slug">Ver todos os @cat.Label</a>
+    </div>
+}

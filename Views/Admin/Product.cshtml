@@ -1,0 +1,111 @@
+@using System.Text.Json
+@{
+    var product  = (ComparadorPrecos.Domain.Product)ViewBag.Product;
+    var listings = (IReadOnlyList<ListingAdminItem>)ViewBag.Listings;
+    var history  = (Dictionary<string, List<PricePoint>>)ViewBag.History;
+    ViewBag.Title = "Admin — " + product.DisplayName;
+
+    var historyJson = JsonSerializer.Serialize(history
+        .Select(kv => new { label = kv.Key, data = kv.Value.Select(p => new { x = p.X, y = p.Y }) }));
+}
+<div class="admin-product-detail">
+    <a class="back-link" href="/admin">← Produtos</a>
+    <h1>@product.DisplayName</h1>
+    @if (product.Notes is not null) { <p class="product-notes">@product.Notes</p> }
+
+    <div class="listing-grid">
+        @foreach (var l in listings)
+        {
+            <div class="listing-card listing-card--@l.LinkStatus">
+                <div class="listing-card-header">
+                    <span class="site-badge site-badge--@l.Site">@l.Site</span>
+                    <span class="status-badge status-badge--@l.LinkStatus">@l.LinkStatus</span>
+                    <span class="match-score">match @l.MatchScore.ToString("F0")</span>
+                </div>
+                @if (l.ImageUrl is not null)
+                {
+                    <img class="listing-card-img" src="@l.ImageUrl" alt="@l.Title" loading="lazy" />
+                }
+                <div class="listing-card-body">
+                    <a class="listing-title" href="@l.Url" target="_blank" rel="noopener">@l.Title</a>
+                    @if (l.CurrentPrice.HasValue)
+                    {
+                        <span class="price-current">R$ @l.CurrentPrice.Value.ToString("N2")</span>
+                    }
+                    @if (l.OriginalPrice.HasValue)
+                    {
+                        <span class="price-original">R$ @l.OriginalPrice.Value.ToString("N2")</span>
+                    }
+                    @if (l.Seller is not null) { <span class="listing-seller">@l.Seller</span> }
+                    <span class="site-id">@l.SiteId</span>
+                    @if (l.LastFetchedAt is not null)
+                    {
+                        <span class="fetched-at">@l.LastFetchedAt[..10]</span>
+                    }
+                </div>
+                <div class="listing-card-actions">
+                    @if (l.LinkStatus is "pending" or "auto")
+                    {
+                        <form method="post" action="/admin/confirm?id=@l.Id">
+                            <button class="btn btn-success btn-sm">Confirmar</button>
+                        </form>
+                        <form method="post" action="/admin/reject?id=@l.Id">
+                            <button class="btn btn-danger btn-sm">Rejeitar</button>
+                        </form>
+                    }
+                    else if (l.LinkStatus is "confirmed")
+                    {
+                        <form method="post" action="/admin/unobserve?id=@l.Id">
+                            <button class="btn btn-secondary btn-sm">Parar de observar</button>
+                        </form>
+                    }
+                    else if (l.LinkStatus is "rejected")
+                    {
+                        <form method="post" action="/admin/reactivate?id=@l.Id">
+                            <button class="btn btn-secondary btn-sm">Reativar</button>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (history.Any())
+    {
+        <section class="chart-section">
+            <h2>Histórico de preços</h2>
+            <div class="chart-wrapper"><canvas id="priceChart"></canvas></div>
+        </section>
+    }
+</div>
+
+@if (history.Any())
+{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@@3/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@@1"></script>
+    <script>
+    const DS = @Html.Raw(historyJson);
+    const PAL = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899'];
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: DS.map((d,i) => ({
+                label: d.label,
+                data: d.data.map(p => ({ x: p.x, y: p.y })),
+                borderColor: PAL[i % PAL.length],
+                backgroundColor: 'transparent',
+                tension: 0.3, pointRadius: 3,
+            }))
+        },
+        options: {
+            scales: {
+                x: { type: 'time', time: { unit: 'day' } },
+                y: { ticks: { callback: v => 'R$ ' + v.toLocaleString('pt-BR') } }
+            },
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+    </script>
+}

@@ -1,0 +1,113 @@
+@using System.Text.Json
+@{
+    var product  = (ComparadorPrecos.Domain.Product)ViewBag.Product;
+    var listings = (IReadOnlyList<ListingComparisonItem>)ViewBag.Listings;
+    var history  = (Dictionary<string, List<PricePoint>>)ViewBag.History;
+    ViewBag.Title = product.DisplayName;
+
+    var historyJson = JsonSerializer.Serialize(history
+        .Select(kv => new { label = kv.Key, data = kv.Value.Select(p => new { x = p.X, y = p.Y }) }));
+}
+<div class="product-detail">
+    <a class="back-link" href="/public">← Voltar</a>
+    <h1>@product.DisplayName</h1>
+
+    @if (!listings.Any())
+    {
+        <p class="empty-state">Nenhuma listagem disponível no momento.</p>
+    }
+    else
+    {
+        <section class="comparison-table">
+            <h2>Comparar preços</h2>
+            <div class="listing-rows">
+                @foreach (var l in listings)
+                {
+                    <div class="listing-row">
+                        @if (l.ImageUrl is not null)
+                        {
+                            <img class="listing-thumb" src="@l.ImageUrl" alt="@l.Title" loading="lazy" />
+                        }
+                        <div class="listing-info">
+                            <span class="site-badge site-badge--@l.Site">@l.Site</span>
+                            <a class="listing-title" href="@l.Url" target="_blank" rel="noopener">@l.Title</a>
+                            @if (l.Seller is not null) { <span class="listing-seller">@l.Seller</span> }
+                        </div>
+                        <div class="listing-price">
+                            <span class="price-current">R$ @l.CurrentPrice.ToString("N2")</span>
+                            @if (l.OriginalPrice.HasValue)
+                            {
+                                <span class="price-original">R$ @l.OriginalPrice.Value.ToString("N2")</span>
+                            }
+                            <a class="btn btn-primary" href="@l.Url" target="_blank" rel="noopener">Ir à loja</a>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+
+    @if (history.Any())
+    {
+        <section class="chart-section">
+            <h2>Histórico de preços</h2>
+            <div class="chart-periods">
+                <button class="period-btn active" data-days="40">40 dias</button>
+                <button class="period-btn" data-days="90">3 meses</button>
+                <button class="period-btn" data-days="180">6 meses</button>
+                <button class="period-btn" data-days="365">1 ano</button>
+            </div>
+            <div class="chart-wrapper"><canvas id="priceChart"></canvas></div>
+        </section>
+    }
+</div>
+
+@if (history.Any())
+{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@@3/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@@1"></script>
+    <script>
+    const ALL_DATASETS = @Html.Raw(historyJson);
+    const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899'];
+    let chart;
+
+    function buildDatasets(days) {
+        const cutoff = luxon.DateTime.now().minus({ days }).toISODate();
+        return ALL_DATASETS.map((ds, i) => ({
+            label: ds.label,
+            data: ds.data.filter(p => p.x >= cutoff).map(p => ({ x: p.x, y: p.y })),
+            borderColor: PALETTE[i % PALETTE.length],
+            backgroundColor: 'transparent',
+            tension: 0.3,
+            pointRadius: 3,
+        }));
+    }
+
+    function render(days) {
+        if (chart) chart.destroy();
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: { datasets: buildDatasets(days) },
+            options: {
+                scales: {
+                    x: { type: 'time', time: { unit: 'day' } },
+                    y: { ticks: { callback: v => 'R$ ' + v.toLocaleString('pt-BR') } }
+                },
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            render(+btn.dataset.days);
+        });
+    });
+
+    render(40);
+    </script>
+}

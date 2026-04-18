@@ -1,0 +1,83 @@
+@using ComparadorPrecos.Domain
+@{
+    ViewBag.Title = "ComparaJá — Comparador de Preços";
+    var products   = (IReadOnlyList<ProductPublicItem>)ViewBag.Products;
+    var search     = (string?)ViewBag.Search;
+    var categories = (CategoryDef[])ViewBag.Categories;
+}
+
+<section class="hero-section">
+    <h1>Compare preços e economize!</h1>
+    <form class="hero-search" method="get" action="/public">
+        <input class="hero-search-input" type="search" name="q"
+               placeholder="Buscar produto, marca ou modelo…" value="@search" autofocus />
+        <button class="btn btn-primary hero-search-btn" type="submit">Buscar</button>
+    </form>
+</section>
+
+@if (string.IsNullOrEmpty(search))
+{
+    <section class="categories-section">
+        <h2 class="section-title">Categorias</h2>
+        <div class="category-strip">
+            @foreach (var cat in categories)
+            {
+                <a class="category-chip" href="/public/category/@cat.Slug">
+                    <span class="category-chip-icon">@cat.Icon</span>
+                    <span class="category-chip-label">@cat.Label</span>
+                </a>
+            }
+        </div>
+    </section>
+}
+
+@if (products.Any())
+{
+    <section class="products-section">
+        @if (!string.IsNullOrEmpty(search))
+        {
+            <p class="results-count">@products.Count resultado(s) para "<strong>@search</strong>"</p>
+        }
+        else
+        {
+            <h2 class="section-title">Todos os produtos</h2>
+        }
+        <div class="product-grid">
+            @foreach (var p in products)
+            {
+                <a class="product-card" href="/public/product/@p.Id">
+                    <div class="card-img">
+                        @if (p.ImageUrl is not null)
+                        {
+                            <img src="@p.ImageUrl" alt="@p.DisplayName" loading="lazy" />
+                        }
+                        else
+                        {
+                            <div class="img-placeholder">@(Categories.Find(p.Category ?? "") is { } c ? c.Icon : "📦")</div>
+                        }
+                    </div>
+                    <div class="card-body">
+                        <h2 class="card-title">@p.DisplayName</h2>
+                        @if (p.BestPrice.HasValue)
+                        {
+                            <p class="card-price">R$ @p.BestPrice.Value.ToString("N2")</p>
+                            <p class="card-meta">@p.BestSite · @p.StoreCount loja(s)</p>
+                        }
+                        else
+                        {
+                            <p class="card-price card-price--na">Preço indisponível</p>
+                        }
+                    </div>
+                </a>
+            }
+        </div>
+    </section>
+}
+else if (!string.IsNullOrEmpty(search))
+{
+    <p class="empty-state">Nenhum produto encontrado para "<strong>@search</strong>".</p>
+}
+else
+{
+    <p class="empty-state">Nenhum produto cadastrado. Execute <code>comparador track</code> primeiro.</p>
+}
