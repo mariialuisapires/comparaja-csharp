@@ -17,6 +17,16 @@ public abstract class BaseScraper
     public abstract Task<List<ListingSnapshot>> ScrapeAsync(
         string searchTerm, int maxResults, CancellationToken ct = default);
 
+    public virtual Task<ListingSnapshot?> FetchPriceFromUrlAsync(
+        string url, CancellationToken ct = default)
+        => Task.FromResult<ListingSnapshot?>(null);
+
+    protected static string ExtractDomain(string url)
+    {
+        try { return new Uri(url).Host; }
+        catch { return url; }
+    }
+
     protected static decimal? ParseBrl(string? text)
     {
         if (string.IsNullOrWhiteSpace(text)) return null;

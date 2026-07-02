@@ -1,83 +1,157 @@
 @using ComparadorPrecos.Domain
 @{
-    ViewBag.Title = "ComparaJá — Comparador de Preços";
+    ViewBag.Title = "ComparaJá — Compare preços e economize sempre";
     var products   = (IReadOnlyList<ProductPublicItem>)ViewBag.Products;
     var search     = (string?)ViewBag.Search;
     var categories = (CategoryDef[])ViewBag.Categories;
+
+    var totalProducts = products.Count;
+    var totalSites    = products.Where(p => p.BestSite != null).Select(p => p.BestSite).Distinct().Count();
 }
 
+<!-- Hero -->
 <section class="hero-section">
-    <h1>Compare preços e economize!</h1>
-    <form class="hero-search" method="get" action="/public">
-        <input class="hero-search-input" type="search" name="q"
-               placeholder="Buscar produto, marca ou modelo…" value="@search" autofocus />
-        <button class="btn btn-primary hero-search-btn" type="submit">Buscar</button>
-    </form>
+    <div class="hero-shape hero-shape-1"></div>
+    <div class="hero-shape hero-shape-2"></div>
+    <div class="hero-shape hero-shape-3"></div>
+    <div class="hero-content">
+        <div class="hero-badge">
+            <span class="hero-badge-dot"></span>
+            Atualizado diariamente
+        </div>
+        <h1 class="hero-title">
+            Compare preços.<br><em>Economize sempre.</em>
+        </h1>
+        <p class="hero-subtitle">
+            Encontre o melhor preço para o produto que você procura em segundos.
+        </p>
+        <form class="hero-search-bar" method="get" action="/public">
+            <span class="hero-search-icon">🔍</span>
+            <input class="hero-search-input" type="search" name="q"
+                   placeholder="Buscar produto, marca ou modelo…"
+                   value="@search" autocomplete="off" />
+            <button class="hero-search-btn" type="submit">Buscar</button>
+        </form>
+        @if (totalProducts > 0)
+        {
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <strong>@totalProducts+</strong>
+                    <span>Produtos</span>
+                </div>
+                <div class="hero-stat">
+                    <strong>@(totalSites > 0 ? totalSites : 3)+</strong>
+                    <span>Lojas</span>
+                </div>
+                <div class="hero-stat">
+                    <strong>100%</strong>
+                    <span>Gratuito</span>
+                </div>
+            </div>
+        }
+    </div>
 </section>
 
 @if (string.IsNullOrEmpty(search))
 {
+    <!-- Categories -->
     <section class="categories-section">
-        <h2 class="section-title">Categorias</h2>
-        <div class="category-strip">
-            @foreach (var cat in categories)
-            {
-                <a class="category-chip" href="/public/category/@cat.Slug">
-                    <span class="category-chip-icon">@cat.Icon</span>
-                    <span class="category-chip-label">@cat.Label</span>
-                </a>
-            }
+        <div class="section-wrap">
+            <div class="section-header">
+                <h2 class="section-title">Categorias em destaque</h2>
+                <a class="section-link" href="/public">Ver todas &rsaquo;</a>
+            </div>
+            <div class="category-strip">
+                @foreach (var cat in categories)
+                {
+                    <a class="category-chip" href="/public/category/@cat.Slug">
+                        <span class="category-chip-icon">@cat.Icon</span>
+                        <span class="category-chip-label">@cat.Label</span>
+                    </a>
+                }
+            </div>
         </div>
     </section>
 }
 
-@if (products.Any())
-{
-    <section class="products-section">
+<!-- Products -->
+<section class="products-section">
+    <div class="section-wrap">
         @if (!string.IsNullOrEmpty(search))
         {
-            <p class="results-count">@products.Count resultado(s) para "<strong>@search</strong>"</p>
+            <p class="results-count">
+                @products.Count resultado(s) para "<strong>@search</strong>"
+            </p>
+        }
+        else if (products.Any())
+        {
+            <div class="section-header">
+                <h2 class="section-title">Produtos em destaque</h2>
+                <a class="section-link" href="/public">Ver todos os produtos &rsaquo;</a>
+            </div>
+        }
+
+        @if (products.Any())
+        {
+            <div class="product-grid">
+                @foreach (var p in products)
+                {
+                    <a class="product-card" href="/public/product/@p.Id"
+                       data-product-id="@p.Id"
+                       data-product-name="@p.DisplayName"
+                       data-product-price="@(p.BestPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+                       data-product-site="@(p.BestSite ?? "")"
+                       data-product-stores="@p.StoreCount"
+                       data-product-image="@(p.ImageUrl ?? "")"
+                       data-product-category="@(p.Category ?? "")">
+                        <span class="card-fav" title="Favoritar">♡</span>
+                        <div class="card-img">
+                            @if (p.ImageUrl is not null)
+                            {
+                                <img src="@p.ImageUrl" alt="@p.DisplayName" loading="lazy" />
+                            }
+                            else
+                            {
+                                <div class="img-placeholder">
+                                    @(Categories.Find(p.Category ?? "") is { } c ? c.Icon : "📦")
+                                </div>
+                            }
+                        </div>
+                        <div class="card-body">
+                            <h2 class="card-title">@p.DisplayName</h2>
+                            @if (p.BestPrice.HasValue)
+                            {
+                                <p class="card-price">R$ @p.BestPrice.Value.ToString("N2")</p>
+                                <div class="card-meta">
+                                    @if (p.BestSite is not null)
+                                    {
+                                        <span class="card-store">@p.BestSite</span>
+                                    }
+                                    <span class="card-stores-count">· @p.StoreCount loja(s)</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="card-price card-price--na">Preço indisponível</p>
+                            }
+                        </div>
+                    </a>
+                }
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(search))
+        {
+            <p class="empty-state">
+                Nenhum produto encontrado para "<strong>@search</strong>".<br>
+                Tente um termo diferente ou <a href="/public" style="color:var(--c-primary)">veja todos</a>.
+            </p>
         }
         else
         {
-            <h2 class="section-title">Todos os produtos</h2>
+            <p class="empty-state">
+                Nenhum produto cadastrado ainda.<br>
+                Execute <code>comparador track</code> para importar produtos.
+            </p>
         }
-        <div class="product-grid">
-            @foreach (var p in products)
-            {
-                <a class="product-card" href="/public/product/@p.Id">
-                    <div class="card-img">
-                        @if (p.ImageUrl is not null)
-                        {
-                            <img src="@p.ImageUrl" alt="@p.DisplayName" loading="lazy" />
-                        }
-                        else
-                        {
-                            <div class="img-placeholder">@(Categories.Find(p.Category ?? "") is { } c ? c.Icon : "📦")</div>
-                        }
-                    </div>
-                    <div class="card-body">
-                        <h2 class="card-title">@p.DisplayName</h2>
-                        @if (p.BestPrice.HasValue)
-                        {
-                            <p class="card-price">R$ @p.BestPrice.Value.ToString("N2")</p>
-                            <p class="card-meta">@p.BestSite · @p.StoreCount loja(s)</p>
-                        }
-                        else
-                        {
-                            <p class="card-price card-price--na">Preço indisponível</p>
-                        }
-                    </div>
-                </a>
-            }
-        </div>
-    </section>
-}
-else if (!string.IsNullOrEmpty(search))
-{
-    <p class="empty-state">Nenhum produto encontrado para "<strong>@search</strong>".</p>
-}
-else
-{
-    <p class="empty-state">Nenhum produto cadastrado. Execute <code>comparador track</code> primeiro.</p>
-}
+    </div>
+</section>

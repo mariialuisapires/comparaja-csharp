@@ -4,11 +4,11 @@ public static class AntiBotHelper
 {
     private static readonly string[] UserAgents =
     [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_2_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Safari/605.1.15",
     ];
 
     private static readonly Random Rng = new();
@@ -23,15 +23,48 @@ public static class AntiBotHelper
     }
 
     public const string StealthScript = """
+        // Hide webdriver
         Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-        Object.defineProperty(navigator, 'plugins',   { get: () => [1,2,3,4,5] });
+        delete navigator.__proto__.webdriver;
+
+        // Realistic plugins
+        Object.defineProperty(navigator, 'plugins', { get: () => [
+            { name: 'Chrome PDF Plugin' }, { name: 'Chrome PDF Viewer' },
+            { name: 'Native Client' }
+        ]});
         Object.defineProperty(navigator, 'languages', { get: () => ['pt-BR','pt','en-US','en'] });
-        const getParameter = WebGLRenderingContext.prototype.getParameter;
-        WebGLRenderingContext.prototype.getParameter = function(parameter) {
-            if (parameter === 37445) return 'Intel Inc.';
-            if (parameter === 37446) return 'Intel Iris OpenGL Engine';
-            return getParameter.apply(this, arguments);
+
+        // WebGL vendor spoofing
+        const origGetParameter = WebGLRenderingContext.prototype.getParameter;
+        WebGLRenderingContext.prototype.getParameter = function(p) {
+            if (p === 37445) return 'Intel Inc.';
+            if (p === 37446) return 'Intel Iris OpenGL Engine';
+            return origGetParameter.apply(this, arguments);
         };
-        window.chrome = { runtime: {} };
+
+        // Full chrome object
+        window.chrome = {
+            runtime: {
+                connect: () => ({}),
+                sendMessage: () => {},
+            },
+            app: { isInstalled: false },
+            csi: () => {},
+            loadTimes: () => {},
+        };
+
+        // Permissions API
+        const origQuery = window.Notification && Notification.requestPermission;
+        if (window.Permissions) {
+            const origPermQuery = Permissions.prototype.query;
+            Permissions.prototype.query = function(p) {
+                if (p.name === 'notifications') return Promise.resolve({ state: 'prompt' });
+                return origPermQuery.apply(this, arguments);
+            };
+        }
+
+        // Realistic screen properties
+        Object.defineProperty(screen, 'colorDepth', { get: () => 24 });
+        Object.defineProperty(screen, 'pixelDepth', { get: () => 24 });
         """;
 }

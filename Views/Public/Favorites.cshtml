@@ -1,0 +1,25 @@
+@{
+    ViewBag.Title = "Meus Favoritos — ComparaJá";
+}
+<div class="section-wrap favorites-page">
+    <div class="favorites-header">
+        <h1 class="favorites-title">
+            <span class="favorites-title-icon">♥</span>
+            Meus Favoritos
+        </h1>
+        <p class="fav-page-count" id="fav-page-count"></p>
+    </div>
+
+    <div id="favorites-grid" class="product-grid" style="display:none"></div>
+
+    <div id="favorites-empty" class="fav-empty" style="display:none">
+        <div class="fav-empty-icon">♡</div>
+        <p class="fav-empty-title">Você ainda não tem favoritos</p>
+        <p class="fav-empty-desc">
+            Clique no coração nos cards de produto para salvar os itens que você quer acompanhar.
+        </p>
+        <a href="/public" class="btn btn-primary btn-lg" style="margin-top:.5rem">
+            Explorar produtos
+        </a>
+    </div>
+</div>

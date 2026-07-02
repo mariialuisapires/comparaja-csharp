@@ -1,1 +1,58 @@
-{"Version":1,"Hash":"Dk5kjS+nRsvWwEDKSi5R7tplaTeFwf5r8/efuh95CS8=","Source":"comparador","BasePath":"/","Mode":"Root","ManifestType":"Build","ReferencedProjectsConfiguration":[],"DiscoveryPatterns":[{"Name":"comparador\\wwwroot","Source":"comparador","ContentRoot":"C:\\Users\\lully\\comparaja-csharp-version\\wwwroot\\","BasePath":"/","Pattern":"**"}],"Assets":[{"Identity":"C:\\Users\\lully\\comparaja-csharp-version\\wwwroot\\app.css","SourceId":"comparador","SourceType":"Discovered","ContentRoot":"C:\\Users\\lully\\comparaja-csharp-version\\wwwroot\\","BasePath":"/","RelativePath":"app#[.{fingerprint}]?.css","AssetKind":"All","AssetMode":"All","AssetRole":"Primary","AssetMergeBehavior":"","AssetMergeSource":"","RelatedAsset":"","AssetTraitName":"","AssetTraitValue":"","Fingerprint":"av2trqfedw","Integrity":"Ojmc3hRhF/L9WnNVgPVsiHzMrW40h0IUWXUA8YagZBA=","CopyToOutputDirectory":"Never","CopyToPublishDirectory":"PreserveNewest","OriginalItemSpec":"wwwroot\\app.css","FileLength":12087,"LastWriteTime":"2026-04-18T18:02:36+00:00"}],"Endpoints":[{"Route":"app.av2trqfedw.css","AssetFile":"C:\\Users\\lully\\comparaja-csharp-version\\wwwroot\\app.css","Selectors":[],"ResponseHeaders":[{"Name":"Cache-Control","Value":"max-age=31536000, immutable"},{"Name":"Content-Length","Value":"12087"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\"Ojmc3hRhF/L9WnNVgPVsiHzMrW40h0IUWXUA8YagZBA=\""},{"Name":"Last-Modified","Value":"Sat, 18 Apr 2026 18:02:36 GMT"}],"EndpointProperties":[{"Name":"fingerprint","Value":"av2trqfedw"},{"Name":"integrity","Value":"sha256-Ojmc3hRhF/L9WnNVgPVsiHzMrW40h0IUWXUA8YagZBA="},{"Name":"label","Value":"app.css"}]},{"Route":"app.css","AssetFile":"C:\\Users\\lully\\comparaja-csharp-version\\wwwroot\\app.css","Selectors":[],"ResponseHeaders":[{"Name":"Cache-Control","Value":"no-cache"},{"Name":"Content-Length","Value":"12087"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\"Ojmc3hRhF/L9WnNVgPVsiHzMrW40h0IUWXUA8YagZBA=\""},{"Name":"Last-Modified","Value":"Sat, 18 Apr 2026 18:02:36 GMT"}],"EndpointProperties":[{"Name":"integrity","Value":"sha256-Ojmc3hRhF/L9WnNVgPVsiHzMrW40h0IUWXUA8YagZBA="}]}]}
+{
+  "Version": 1,
+  "Hash": "Mi+SrEjA4ZmoCK0ZSzAhjdITTVHVTK7yrIdDXhDBFq4=",
+  "Source": "comparador",
+  "BasePath": "_content/comparador",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [
+    {
+      "Name": "comparador\\wwwroot",
+      "Source": "comparador",
+      "ContentRoot": "C:\\Users\\lully\\comparaja-csharp-version\\wwwroot\\",
+      "BasePath": "_content/comparador",
+      "Pattern": "**"
+    }
+  ],
+  "Assets": [
+    {
+      "Identity": "C:\\Users\\lully\\comparaja-csharp-version\\wwwroot\\app.css",
+      "SourceId": "comparador",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\lully\\comparaja-csharp-version\\wwwroot\\",
+      "BasePath": "_content/comparador",
+      "RelativePath": "app.css",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\app.css"
+    },
+    {
+      "Identity": "C:\\Users\\lully\\comparaja-csharp-version\\wwwroot\\favorites.js",
+      "SourceId": "comparador",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\lully\\comparaja-csharp-version\\wwwroot\\",
+      "BasePath": "_content/comparador",
+      "RelativePath": "favorites.js",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\favorites.js"
+    }
+  ]
+}

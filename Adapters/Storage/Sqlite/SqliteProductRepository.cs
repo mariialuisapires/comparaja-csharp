@@ -31,6 +31,41 @@ public sealed class SqliteProductRepository : IProductRepository, IDisposable
         var cols = _db.Query<string>("SELECT name FROM pragma_table_info('products')").ToHashSet();
         if (!cols.Contains("category"))
             _db.Execute("ALTER TABLE products ADD COLUMN category TEXT NOT NULL DEFAULT ''");
+
+        // Remove listings cujo id não tem formato GUID (dados de versões anteriores do código)
+        _db.Execute("""
+            DELETE FROM price_snapshots
+            WHERE listing_id NOT LIKE '________-____-____-____-____________';
+            DELETE FROM listings
+            WHERE id NOT LIKE '________-____-____-____-____________';
+            """);
+
+        // Corrige slugs de categorias renomeadas
+        _db.Execute("UPDATE products SET category = 'console'        WHERE category IN ('videogame','game','games')");
+        _db.Execute("UPDATE products SET category = 'placa-de-video' WHERE category IN ('hardware','gpu','graphics')");
+
+        // Atribui categoria a produtos sem categoria pelo nome
+        _db.Execute("UPDATE products SET category = 'console'        WHERE category = '' AND lower(name) LIKE '%playstation%'");
+        _db.Execute("UPDATE products SET category = 'console'        WHERE category = '' AND lower(name) LIKE '%xbox%'");
+        _db.Execute("UPDATE products SET category = 'console'        WHERE category = '' AND lower(name) LIKE '%nintendo%'");
+        _db.Execute("UPDATE products SET category = 'smartphone'     WHERE category = '' AND lower(name) LIKE '%iphone%'");
+        _db.Execute("UPDATE products SET category = 'smartphone'     WHERE category = '' AND lower(name) LIKE '%samsung galaxy%'");
+        _db.Execute("UPDATE products SET category = 'placa-de-video' WHERE category = '' AND lower(name) LIKE '%rtx%'");
+        _db.Execute("UPDATE products SET category = 'placa-de-video' WHERE category = '' AND lower(name) LIKE '%radeon%'");
+
+        // Remove produtos que ainda ficaram sem categoria ou fora das 3 categorias ativas
+        _db.Execute("""
+            DELETE FROM price_snapshots WHERE listing_id IN (
+                SELECT l.id FROM listings l
+                JOIN products p ON p.id = l.product_id
+                WHERE p.category NOT IN ('smartphone','console','placa-de-video')
+            );
+            DELETE FROM listings WHERE product_id IN (
+                SELECT id FROM products
+                WHERE category NOT IN ('smartphone','console','placa-de-video')
+            );
+            DELETE FROM products WHERE category NOT IN ('smartphone','console','placa-de-video');
+            """);
     }
 
     private static string ReadEmbeddedSql(string fileName)
@@ -75,8 +110,13 @@ public sealed class SqliteProductRepository : IProductRepository, IDisposable
     public Listing UpsertListing(Product product, ListingSnapshot snap)
     {
         var existing = _db.QueryFirstOrDefault<ListingRow>(
-            "SELECT * FROM listings WHERE site = @site AND site_id = @siteId",
-            new { site = snap.Site, siteId = snap.SiteId });
+            """
+            SELECT * FROM listings
+            WHERE (site = @site AND site_id = @siteId)
+               OR (product_id = @productId AND site = @site AND url = @url)
+            LIMIT 1
+            """,
+            new { site = snap.Site, siteId = snap.SiteId, productId = G(product.Id), url = snap.Url });
 
         if (existing is not null)
         {
@@ -149,6 +189,17 @@ public sealed class SqliteProductRepository : IProductRepository, IDisposable
             new { status, id = G(listingId) });
     }
 
+    public void SetManualPrice(Guid listingId, decimal price)
+    {
+        _db.Execute("""
+            INSERT INTO price_snapshots(listing_id, price, currency, fetched_at)
+            VALUES (@listingId, @price, 'BRL', @fetchedAt)
+            """,
+            new { listingId = G(listingId), price, fetchedAt = DateTime.UtcNow.ToString("O") });
+        _db.Execute("UPDATE listings SET link_status='confirmed' WHERE id=@id",
+            new { id = G(listingId) });
+    }
+
     // ── Admin queries ─────────────────────────────────────────────────────────
 
     public IReadOnlyList<ProductSummaryItem> ListProductsSummary(string? search = null)
@@ -158,24 +209,32 @@ public sealed class SqliteProductRepository : IProductRepository, IDisposable
             : "WHERE lower(p.display_name) LIKE @like";
 
         var sql = $"""
-            WITH ranked AS (
+            WITH latest_snap AS (
+                SELECT listing_id, price, fetched_at,
+                       ROW_NUMBER() OVER (PARTITION BY listing_id ORDER BY fetched_at DESC) AS snap_rn
+                FROM price_snapshots
+            ),
+            latest_price AS (
+                SELECT listing_id, price, fetched_at FROM latest_snap WHERE snap_rn = 1
+            ),
+            ranked AS (
                 SELECT l.product_id,
-                       ps.price,
+                       lp.price,
                        l.site,
-                       ps.fetched_at,
-                       ROW_NUMBER() OVER (PARTITION BY l.product_id ORDER BY ps.price ASC) AS rn
+                       lp.fetched_at,
+                       ROW_NUMBER() OVER (PARTITION BY l.product_id ORDER BY lp.price ASC) AS rn
                 FROM listings l
-                JOIN price_snapshots ps ON ps.listing_id = l.id
-                WHERE l.link_status IN ('auto','confirmed') AND ps.price IS NOT NULL
+                JOIN latest_price lp ON lp.listing_id = l.id
+                WHERE l.link_status IN ('auto','confirmed') AND lp.price IS NOT NULL
             )
             SELECT p.id, p.display_name, p.category,
                    COUNT(DISTINCT l.id)         AS listing_count,
                    r.price                       AS best_price,
                    r.site                        AS best_site,
-                   MAX(ps2.fetched_at)           AS last_updated
+                   MAX(lp2.fetched_at)           AS last_updated
             FROM products p
             LEFT JOIN listings l       ON l.product_id = p.id AND l.link_status IN ('auto','confirmed')
-            LEFT JOIN price_snapshots ps2 ON ps2.listing_id = l.id
+            LEFT JOIN latest_price lp2 ON lp2.listing_id = l.id
             LEFT JOIN ranked r         ON r.product_id = p.id AND r.rn = 1
             {where}
             GROUP BY p.id, p.display_name, p.category, r.price, r.site
@@ -233,13 +292,16 @@ public sealed class SqliteProductRepository : IProductRepository, IDisposable
     public Dictionary<string, List<PricePoint>> GetPriceHistory(Guid productId)
     {
         var sql = """
-            SELECT l.title, ps.fetched_at, ps.price
+            SELECT l.site AS title,
+                   substr(ps.fetched_at, 1, 10) AS fetched_at,
+                   MIN(ps.price) AS price
             FROM listings l
             JOIN price_snapshots ps ON ps.listing_id = l.id
             WHERE l.product_id = @productId
               AND l.link_status IN ('auto','confirmed')
               AND ps.price IS NOT NULL
-            ORDER BY l.title, ps.fetched_at
+            GROUP BY l.site, substr(ps.fetched_at, 1, 10)
+            ORDER BY l.site, ps.fetched_at
             """;
 
         var rows = _db.Query<PriceHistoryRow>(sql, new { productId = G(productId) });
@@ -260,14 +322,25 @@ public sealed class SqliteProductRepository : IProductRepository, IDisposable
             : "WHERE lower(p.display_name) LIKE @like";
 
         var sql = $"""
-            WITH best AS (
-                SELECT l.product_id,
-                       MIN(ps.price) AS best_price,
-                       l.site        AS best_site
+            WITH latest_snap AS (
+                SELECT listing_id, price,
+                       ROW_NUMBER() OVER (PARTITION BY listing_id ORDER BY fetched_at DESC) AS snap_rn
+                FROM price_snapshots
+            ),
+            latest_price AS (
+                SELECT listing_id, price FROM latest_snap WHERE snap_rn = 1
+            ),
+            ranked_prices AS (
+                SELECT l.product_id, l.site, lp.price,
+                       ROW_NUMBER() OVER (PARTITION BY l.product_id ORDER BY lp.price ASC) AS rn
                 FROM listings l
-                JOIN price_snapshots ps ON ps.listing_id = l.id
-                WHERE l.link_status IN ('auto','confirmed') AND ps.price IS NOT NULL
-                GROUP BY l.product_id
+                JOIN latest_price lp ON lp.listing_id = l.id
+                WHERE l.link_status IN ('auto','confirmed') AND lp.price IS NOT NULL
+            ),
+            best AS (
+                SELECT product_id, price AS best_price, site AS best_site
+                FROM ranked_prices
+                WHERE rn = 1
             ),
             img AS (
                 SELECT product_id, image_url
@@ -278,7 +351,7 @@ public sealed class SqliteProductRepository : IProductRepository, IDisposable
             )
             SELECT p.id, p.display_name, p.category,
                    b.best_price, b.best_site,
-                   COUNT(DISTINCT l2.id) AS store_count,
+                   COUNT(DISTINCT l2.site) AS store_count,
                    i.image_url
             FROM products p
             LEFT JOIN best b ON b.product_id = p.id
@@ -302,13 +375,22 @@ public sealed class SqliteProductRepository : IProductRepository, IDisposable
         decimal? minPrice = null, decimal? maxPrice = null,
         string sort = "price_asc")
     {
+        var p = new DynamicParameters();
+        p.Add("category", category);
+
         var conditions = new List<string> { "p.category = @category" };
+
         if (!string.IsNullOrWhiteSpace(brand))
-            conditions.Add("lower(p.display_name) LIKE @brandLike");
-        if (minPrice.HasValue)
-            conditions.Add("b.best_price >= @minPrice");
-        if (maxPrice.HasValue)
-            conditions.Add("b.best_price <= @maxPrice");
+        {
+            var keywords = BrandKeywords(brand);
+            var clauses  = keywords.Select((_, i) => $"lower(p.display_name) LIKE @bk{i}").ToList();
+            conditions.Add("(" + string.Join(" OR ", clauses) + ")");
+            for (int i = 0; i < keywords.Length; i++)
+                p.Add($"bk{i}", $"%{keywords[i]}%");
+        }
+
+        if (minPrice.HasValue) { conditions.Add("b.best_price >= @minPrice"); p.Add("minPrice", minPrice); }
+        if (maxPrice.HasValue) { conditions.Add("b.best_price <= @maxPrice"); p.Add("maxPrice", maxPrice); }
 
         var orderBy = sort switch
         {
@@ -318,14 +400,25 @@ public sealed class SqliteProductRepository : IProductRepository, IDisposable
         };
 
         var sql = $"""
-            WITH best AS (
-                SELECT l.product_id,
-                       MIN(ps.price) AS best_price,
-                       l.site        AS best_site
+            WITH latest_snap AS (
+                SELECT listing_id, price,
+                       ROW_NUMBER() OVER (PARTITION BY listing_id ORDER BY fetched_at DESC) AS snap_rn
+                FROM price_snapshots
+            ),
+            latest_price AS (
+                SELECT listing_id, price FROM latest_snap WHERE snap_rn = 1
+            ),
+            ranked_prices AS (
+                SELECT l.product_id, l.site, lp.price,
+                       ROW_NUMBER() OVER (PARTITION BY l.product_id ORDER BY lp.price ASC) AS rn
                 FROM listings l
-                JOIN price_snapshots ps ON ps.listing_id = l.id
-                WHERE l.link_status IN ('auto','confirmed') AND ps.price IS NOT NULL
-                GROUP BY l.product_id
+                JOIN latest_price lp ON lp.listing_id = l.id
+                WHERE l.link_status IN ('auto','confirmed') AND lp.price IS NOT NULL
+            ),
+            best AS (
+                SELECT product_id, price AS best_price, site AS best_site
+                FROM ranked_prices
+                WHERE rn = 1
             ),
             img AS (
                 SELECT product_id, image_url
@@ -336,7 +429,7 @@ public sealed class SqliteProductRepository : IProductRepository, IDisposable
             )
             SELECT p.id, p.display_name, p.category,
                    b.best_price, b.best_site,
-                   COUNT(DISTINCT l2.id) AS store_count,
+                   COUNT(DISTINCT l2.site) AS store_count,
                    i.image_url
             FROM products p
             LEFT JOIN best b ON b.product_id = p.id
@@ -347,34 +440,68 @@ public sealed class SqliteProductRepository : IProductRepository, IDisposable
             ORDER BY {orderBy} NULLS LAST, p.display_name
             """;
 
-        return _db.Query<ProductPublicRow>(sql, new
-            {
-                category,
-                brandLike = $"%{brand?.ToLower()}%",
-                minPrice,
-                maxPrice,
-            })
+        return _db.Query<ProductPublicRow>(sql, p)
             .Select(r => new ProductPublicItem(
                 Guid.Parse(r.Id), r.DisplayName, r.BestPrice, r.BestSite,
                 r.StoreCount, r.ImageUrl, string.IsNullOrEmpty(r.Category) ? null : r.Category))
             .ToList();
     }
 
+    // Mapeia marca do filtro para keywords de busca no nome do produto.
+    // Necessário porque produtos como "iPhone" não contêm a palavra "Apple" no nome.
+    private static string[] BrandKeywords(string brand) => brand.ToLower() switch
+    {
+        "apple"     => ["apple", "iphone", "ipad", "macbook", "airpods"],
+        "samsung"   => ["samsung"],
+        "motorola"  => ["motorola", "moto"],
+        "xiaomi"    => ["xiaomi", "redmi", "poco"],
+        "lg"        => ["lg "],
+        "nvidia"    => ["nvidia", "rtx", "gtx", "geforce"],
+        "amd"       => ["amd", "radeon"],
+        "gigabyte"  => ["gigabyte", "aorus"],
+        "asus"      => ["asus", "rog", "tuf"],
+        "msi"       => ["msi"],
+        "sony"      => ["sony", "playstation", "ps5", "ps4"],
+        "microsoft" => ["microsoft", "xbox"],
+        "nintendo"  => ["nintendo", "switch"],
+        _           => [brand.ToLower()],
+    };
+
     public IReadOnlyList<ListingComparisonItem> GetListingsForComparison(Guid productId)
     {
+        // Prioritise confirmed > auto; within each status, listings with a price beat
+        // those without, and cheaper beats dearer. This ensures manually-verified links
+        // are always shown even when the crawler has not fetched a price yet.
         var sql = """
-            SELECT l.id, l.site, l.site_id, l.title, l.url, l.seller, l.image_url,
-                   ps.price AS current_price, ps.original_price
-            FROM listings l
-            JOIN price_snapshots ps ON ps.id = (
-                SELECT id FROM price_snapshots
-                WHERE listing_id = l.id
-                ORDER BY fetched_at DESC LIMIT 1
+            WITH latest_snap AS (
+                SELECT listing_id, price, original_price,
+                       ROW_NUMBER() OVER (PARTITION BY listing_id ORDER BY fetched_at DESC) AS snap_rn
+                FROM price_snapshots
+            ),
+            latest_price AS (
+                SELECT listing_id, price, original_price FROM latest_snap WHERE snap_rn = 1
+            ),
+            ranked AS (
+                SELECT l.id, l.site, l.site_id, l.title, l.url, l.seller, l.image_url,
+                       lp.price AS current_price, lp.original_price,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY l.site
+                           ORDER BY
+                               CASE l.link_status WHEN 'confirmed' THEN 0 ELSE 1 END ASC,
+                               CASE WHEN lp.price IS NOT NULL THEN 0 ELSE 1 END ASC,
+                               lp.price ASC
+                       ) AS rn
+                FROM listings l
+                LEFT JOIN latest_price lp ON lp.listing_id = l.id
+                WHERE l.product_id = @productId
+                  AND l.link_status IN ('auto','confirmed')
             )
-            WHERE l.product_id = @productId
-              AND l.link_status IN ('auto','confirmed')
-              AND ps.price IS NOT NULL
-            ORDER BY ps.price ASC
+            SELECT id, site, site_id, title, url, seller, image_url, current_price, original_price
+            FROM ranked
+            WHERE rn = 1
+            ORDER BY
+                CASE WHEN current_price IS NOT NULL THEN 0 ELSE 1 END ASC,
+                current_price ASC
             """;
 
         return _db.Query<ComparisonRow>(sql, new { productId = G(productId) })
@@ -480,7 +607,7 @@ public sealed class SqliteProductRepository : IProductRepository, IDisposable
         public string Url { get; init; } = "";
         public string? Seller { get; init; }
         public string? ImageUrl { get; init; }
-        public decimal CurrentPrice { get; init; }
+        public decimal? CurrentPrice { get; init; }
         public decimal? OriginalPrice { get; init; }
     }
 }

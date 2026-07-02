@@ -3,15 +3,26 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>@(ViewBag.Title ?? "ComparaJá")</title>
+    <title>@(ViewBag.Title ?? "ComparaJá — Comparador de Preços")</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/app.css" />
 </head>
 <body>
 <header class="site-header">
     <nav class="nav-inner">
-        <a class="brand" href="/public">ComparaJá</a>
+        <a class="brand" href="/public">
+            <span class="brand-icon">🛍️</span>
+            <span class="brand-name">ComparaJá</span>
+        </a>
         <div class="nav-links">
             <a href="/public">Produtos</a>
+            <a href="/public">Categorias</a>
+            <a href="/public/favorites" class="nav-fav-link">
+                ♡ Favoritos
+                <span class="fav-counter">0</span>
+            </a>
             @if (Context.Session.GetString("user") != null)
             {
                 <a href="/admin">Admin</a>
@@ -19,7 +30,7 @@
             }
             else
             {
-                <a href="/admin/login">Entrar</a>
+                <a href="/admin/login" class="btn-nav">Entrar / Cadastrar</a>
             }
         </div>
     </nav>
@@ -27,5 +38,12 @@
 <main class="site-main">
     @RenderBody()
 </main>
+<footer class="site-footer">
+    <div class="footer-inner">
+        <span class="footer-brand">🛍️ ComparaJá</span>
+        <span>© 2025 · Comparador de Preços · Economize sempre</span>
+    </div>
+</footer>
+<script src="/favorites.js"></script>
 </body>
 </html>

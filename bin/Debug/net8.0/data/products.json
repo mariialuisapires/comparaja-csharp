@@ -1,0 +1,48 @@
+[
+  {
+    "nome": "Samsung Galaxy S25 Ultra 512GB",
+    "categoria": "smartphone",
+    "links": [
+      { "loja": "mercadolivre", "url": "https://www.mercadolivre.com.br/celular-samsung-galaxy-s25-ultra-5g-512gb-12gb-ram-cmera-quadrupla-de-200501050-tela-grande-de-69-titnio-prata/p/MLB46687988" },
+      { "loja": "mercadolivre", "url": "https://www.mercadolivre.com.br/celular-samsung-galaxy-s25-ultra-5g-512gb-12gb-ram-cmera-quadrupla-de-200501050-tela-grande-de-69-titnio-preto/p/MLB45513937" },
+      { "loja": "amazon", "url": "https://www.amazon.com.br/Celular-Samsung-Galaxy-Qu%C3%A1drupla-Tit%C3%A2nio/dp/B0DSXZ4FZT" },
+      { "loja": "amazon", "url": "https://www.amazon.com.br/Celular-Samsung-Galaxy-Qu%C3%A1drupla-Tit%C3%A2nio/dp/B0DSY6L19S" },
+      { "loja": "magalu", "url": "https://www.magazineluiza.com.br/samsung-galaxy-s25-ultra-5g-512gb-galaxy-ai-titanio-cinza-69-12gb-ram-cam-quadrupla-200-50-10-50mp-bateria-5000mah-dual-chip/p/238920300/te/galx/" }
+    ]
+  },
+  {
+    "nome": "iPhone 15 Pro 256GB",
+    "categoria": "smartphone",
+    "links": [
+      { "loja": "mercadolivre", "url": "https://www.mercadolivre.com.br/apple-iphone-15-pro-256-gb-titnio-branco-novo-com-caixa-aberta/p/MLB2016211656" },
+      { "loja": "mercadolivre", "url": "https://www.mercadolivre.com.br/apple-iphone-15-pro-256-gb-titnio-azul-novo-com-caixa-aberta/p/MLB2016209818" },
+      { "loja": "mercadolivre", "url": "https://www.mercadolivre.com.br/apple-iphone-15-pro-256-gb-titnio-natural-novo-com-caixa-aberta/p/MLB2016211678" },
+      { "loja": "amazon", "url": "https://a.co/d/00WSnZuM" },
+      { "loja": "magalu", "url": "https://www.magazineluiza.com.br/apple-iphone-15-pro-256gb-titanio-preto-61-48mp-ios-5g/p/237922700/te/15pr/" }
+    ]
+  },
+  {
+    "nome": "PlayStation 5",
+    "categoria": "console",
+    "links": [
+      { "loja": "kabum",      "url": "https://www.kabum.com.br/produto/989702" },
+      { "loja": "kabum",      "url": "https://www.kabum.com.br/produto/636960" },
+      { "loja": "amazon",     "url": "https://a.co/d/04FDhVmF" },
+      { "loja": "amazon",     "url": "https://a.co/d/08rvzNfv" },
+      { "loja": "americanas", "url": "https://www.americanas.com.br/playstation-5-edicao-digital-825gb-1-controle-branco-sony-com-2-jogos-8299907/p" },
+      { "loja": "magalu", "url": "https://www.magazineluiza.com.br/playstation-5-edicao-digital-825gb-1-controle-branco-sony/p/240604800/ga/gap5/" },
+      { "loja": "magalu", "url": "https://www.magazineluiza.com.br/playstation-5-slim-disk-1tb-1-controle-branco-sony-com-2-jogos/p/240590800/ga/gap5/" },
+      { "loja": "magalu", "url": "https://www.magazineluiza.com.br/playstation-5-edicao-digital-825gb-1-controle-branco-sony-com-2-jogos/p/240590700/ga/gap5/" }
+    ]
+  },
+  {
+    "nome": "NVIDIA RTX 5090",
+    "categoria": "placa-de-video",
+    "links": [
+      { "loja": "kabum", "url": "https://www.kabum.com.br/produto/1006131/placa-de-video-msi-rtx-5090-lightning-z-nvidia-geforce-32gb-gddr7-512-bit-g5090-32lz" },
+      { "loja": "kabum", "url": "https://www.kabum.com.br/produto/704641" },
+      { "loja": "kabum", "url": "https://www.kabum.com.br/produto/700805" },
+      { "loja": "amazon", "url": "https://a.co/d/0egSEqWN" }
+    ]
+  }
+]

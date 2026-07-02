@@ -35,6 +35,13 @@ public class PublicController : Controller
         return View();
     }
 
+    [HttpGet("favorites")]
+    public IActionResult Favorites()
+    {
+        ViewBag.Title = "Meus Favoritos — ComparaJá";
+        return View();
+    }
+
     [HttpGet("[action]/{id}")]
     public IActionResult Product(string id)
     {

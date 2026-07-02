@@ -65,4 +65,60 @@ public sealed partial class MagaluScraper : BaseScraper
 
         return results;
     }
+
+    public override async Task<ListingSnapshot?> FetchPriceFromUrlAsync(
+        string url, CancellationToken ct = default)
+    {
+        var skuMatch = SkuRegex().Match(url);
+        if (!skuMatch.Success) return null;
+        var sku      = skuMatch.Groups[1].Value;
+        var cleanUrl = url.Split('?')[0];
+
+        // Product detail pages: don't wait for a specific selector — avoids timeout
+        // on bot-detection pages that never render JS content
+        var html = await Fetcher.FetchHtmlAsync(cleanUrl, Domain,
+            waitSelector: null, ct: ct);
+        var doc = await Parser.ParseDocumentAsync(html, ct);
+
+        // Title: product detail uses heading-product-title; fall back to h1
+        var title = Text(doc.QuerySelector("[data-testid='heading-product-title']"))
+                 ?? Text(doc.QuerySelector("h1.product-title"))
+                 ?? Text(doc.QuerySelector("h1"));
+
+        // Detect bot-blocked / error pages
+        if (string.IsNullOrWhiteSpace(title)
+            || title.Contains("possível acessar", StringComparison.OrdinalIgnoreCase)
+            || title.Contains("acesso negado", StringComparison.OrdinalIgnoreCase)
+            || title.Contains("robô", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.Error.WriteLine($"    [magalu] página bloqueada ou inacessível: {title?.Trim()}");
+            return null;
+        }
+
+        // Price: product detail page uses different testids than search results
+        var priceText = Text(doc.QuerySelector("[data-testid='price-value']"))
+                     ?? Text(doc.QuerySelector("[class*='Price__Value']"))
+                     ?? Text(doc.QuerySelector("[class*='price-value']"));
+        if (priceText is not null)
+            priceText = System.Text.RegularExpressions.Regex.Replace(priceText, @"^[^\d]+", "");
+
+        var origText = Text(doc.QuerySelector("[data-testid='price-original']"))
+                    ?? Text(doc.QuerySelector("[class*='price-original']"));
+
+        // Image: prefer the main selected image, fall back to first product image
+        var imgSrc = Attr(doc.QuerySelector("[data-testid='image-selected-thumbnail']"), "src")
+                  ?? Attr(doc.QuerySelector("[data-testid='image']"), "src")
+                  ?? Attr(doc.QuerySelector("img[src*='mlcdn.com.br']"), "src");
+
+        return new ListingSnapshot(
+            Site:          SiteName,
+            SiteId:        sku,
+            Title:         title,
+            Url:           cleanUrl,
+            Price:         ParseBrl(priceText),
+            OriginalPrice: ParseBrl(origText),
+            ImageUrl:      imgSrc,
+            MatchScore:    100.0,
+            FetchedAt:     DateTime.UtcNow);
+    }
 }

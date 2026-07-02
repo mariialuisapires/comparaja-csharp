@@ -64,6 +64,20 @@ public class AdminController : Controller
         return Redirect("/admin/login");
     }
 
+    [HttpPost("set-price")]
+    public IActionResult SetPrice(string id, string price)
+    {
+        if (!IsAdmin()) return Redirect("/admin/login");
+        if (!Guid.TryParse(id, out var guid)) return NotFound();
+        var normalized = (price ?? "").Trim().Replace(',', '.');
+        if (!decimal.TryParse(normalized, System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var value) || value <= 0)
+            return BadRequest("Preço inválido");
+        _repo.SetManualPrice(guid, value);
+        var referer = Request.Headers["Referer"].ToString();
+        return Redirect(string.IsNullOrEmpty(referer) ? "/admin" : referer);
+    }
+
     [HttpPost("[action]")]
     public IActionResult Confirm(string id) => SetStatus(id, "confirmed");
 
@@ -78,7 +92,7 @@ public class AdminController : Controller
 
     private IActionResult SetStatus(string id, string status)
     {
-        if (!IsAdmin()) return Forbid();
+        if (!IsAdmin()) return Redirect("/admin/login");
         if (!Guid.TryParse(id, out var guid)) return NotFound();
         _repo.SetListingStatus(guid, status);
         var referer = Request.Headers["Referer"].ToString();

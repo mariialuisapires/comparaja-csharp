@@ -65,6 +65,11 @@
                             <button class="btn btn-secondary btn-sm">Reativar</button>
                         </form>
                     }
+                    <form method="post" action="/admin/set-price?id=@l.Id" class="set-price-form">
+                        <input name="price" type="text" placeholder="Ex: 3998,07"
+                               class="set-price-input" />
+                        <button class="btn btn-primary btn-sm">Definir preço</button>
+                    </form>
                 </div>
             </div>
         }

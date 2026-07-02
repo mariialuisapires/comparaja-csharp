@@ -2,19 +2,24 @@
     ViewBag.Title = "Login — Admin";
     Layout = "_Layout";
 }
-<div class="login-card">
-    <h1>Painel Admin</h1>
-    @if (ViewBag.Error is string err)
-    {
-        <p class="alert alert-error">@err</p>
-    }
-    <form method="post" action="/admin/login" autocomplete="on">
-        <label>E-mail
-            <input type="email" name="email" required autofocus />
-        </label>
-        <label>Senha
-            <input type="password" name="password" required />
-        </label>
-        <button class="btn btn-primary" type="submit">Entrar</button>
-    </form>
+<div class="login-wrap">
+    <div class="login-card">
+        <div class="login-logo">🛍️</div>
+        <h1>Painel Admin</h1>
+        @if (ViewBag.Error is string err)
+        {
+            <p class="alert-error">@err</p>
+        }
+        <form method="post" action="/admin/login" autocomplete="on">
+            <label>E-mail
+                <input type="email" name="email" required autofocus />
+            </label>
+            <label>Senha
+                <input type="password" name="password" required />
+            </label>
+            <button class="btn btn-primary btn-lg" type="submit" style="width:100%;margin-top:.25rem">
+                Entrar
+            </button>
+        </form>
+    </div>
 </div>

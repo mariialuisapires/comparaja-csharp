@@ -30,7 +30,7 @@ public sealed record ListingComparisonItem(
     string   Url,
     string?  Seller,
     string?  ImageUrl,
-    decimal  CurrentPrice,
+    decimal? CurrentPrice,
     decimal? OriginalPrice);
 
 public sealed record ListingAdminItem(
@@ -58,6 +58,7 @@ public interface IProductRepository
     Listing  UpsertListing(Product product, ListingSnapshot snap);
     void     AddPriceSnapshot(Listing listing, ListingSnapshot snap);
     void     SetListingStatus(Guid listingId, string status);
+    void     SetManualPrice(Guid listingId, decimal price);
 
     // Admin queries
     IReadOnlyList<ProductSummaryItem>    ListProductsSummary(string? search = null);

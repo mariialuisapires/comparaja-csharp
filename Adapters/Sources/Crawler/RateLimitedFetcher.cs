@@ -94,16 +94,22 @@ public sealed class RateLimitedFetcher : IAsyncDisposable
         {
             UserAgent = AntiBotHelper.RandomUserAgent(),
             Locale    = "pt-BR",
+            TimezoneId = "America/Sao_Paulo",
+            ViewportSize = new() { Width = 1920, Height = 1080 },
             ExtraHTTPHeaders = new Dictionary<string, string>
             {
                 ["Accept-Language"] = "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
                 ["DNT"] = "1",
+                ["Upgrade-Insecure-Requests"] = "1",
+                ["sec-ch-ua"] = "\"Google Chrome\";v=\"136\", \"Chromium\";v=\"136\", \"Not.A/Brand\";v=\"24\"",
+                ["sec-ch-ua-mobile"] = "?0",
+                ["sec-ch-ua-platform"] = "\"Windows\"",
             }
         });
         await newCtx.RouteAsync("**/*", async route =>
         {
             var type = route.Request.ResourceType;
-            if (type is "image" or "media" or "font")
+            if (type is "media" or "font")
                 await route.AbortAsync();
             else
                 await route.ContinueAsync();

@@ -1,16 +1,28 @@
 @using System.Text.Json
 @{
-    var product  = (ComparadorPrecos.Domain.Product)ViewBag.Product;
-    var listings = (IReadOnlyList<ListingComparisonItem>)ViewBag.Listings;
-    var history  = (Dictionary<string, List<PricePoint>>)ViewBag.History;
-    ViewBag.Title = product.DisplayName;
+    var product    = (ComparadorPrecos.Domain.Product)ViewBag.Product;
+    var listings   = (IReadOnlyList<ListingComparisonItem>)ViewBag.Listings;
+    var history    = (Dictionary<string, List<PricePoint>>)ViewBag.History;
+    var bestPriced = listings.FirstOrDefault(l => l.CurrentPrice.HasValue);
+    ViewBag.Title  = product.DisplayName + " — ComparaJá";
 
     var historyJson = JsonSerializer.Serialize(history
         .Select(kv => new { label = kv.Key, data = kv.Value.Select(p => new { x = p.X, y = p.Y }) }));
 }
-<div class="product-detail">
+<div class="product-detail-wrap">
     <a class="back-link" href="/public">← Voltar</a>
-    <h1>@product.DisplayName</h1>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:2rem;flex-wrap:wrap">
+        <h1 class="product-detail-title" style="margin-bottom:0;flex:1">@product.DisplayName</h1>
+        <button class="detail-fav-btn"
+                data-product-id="@product.Id"
+                data-product-name="@product.DisplayName"
+                data-product-price="@(bestPriced?.CurrentPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+                data-product-site="@(bestPriced?.Site ?? "")"
+                data-product-stores="@listings.Count"
+                data-product-image="@(bestPriced?.ImageUrl ?? listings.FirstOrDefault(l => l.ImageUrl != null)?.ImageUrl ?? "")">
+            <span class="detail-fav-icon">♡</span><span>Favoritar</span>
+        </button>
+    </div>
 
     @if (!listings.Any())
     {
@@ -18,7 +30,7 @@
     }
     else
     {
-        <section class="comparison-table">
+        <section class="comparison-section">
             <h2>Comparar preços</h2>
             <div class="listing-rows">
                 @foreach (var l in listings)
@@ -29,17 +41,35 @@
                             <img class="listing-thumb" src="@l.ImageUrl" alt="@l.Title" loading="lazy" />
                         }
                         <div class="listing-info">
-                            <span class="site-badge site-badge--@l.Site">@l.Site</span>
+                            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+                                <span class="site-badge site-badge--@l.Site">@l.Site</span>
+                                @if (l == bestPriced)
+                                {
+                                    <span class="best-badge">✓ Melhor preço</span>
+                                }
+                            </div>
                             <a class="listing-title" href="@l.Url" target="_blank" rel="noopener">@l.Title</a>
-                            @if (l.Seller is not null) { <span class="listing-seller">@l.Seller</span> }
+                            @if (l.Seller is not null)
+                            {
+                                <span class="listing-seller">Vendido por @l.Seller</span>
+                            }
                         </div>
                         <div class="listing-price">
-                            <span class="price-current">R$ @l.CurrentPrice.ToString("N2")</span>
-                            @if (l.OriginalPrice.HasValue)
+                            @if (l.CurrentPrice.HasValue)
                             {
-                                <span class="price-original">R$ @l.OriginalPrice.Value.ToString("N2")</span>
+                                <span class="price-current">R$ @l.CurrentPrice.Value.ToString("N2")</span>
+                                @if (l.OriginalPrice.HasValue)
+                                {
+                                    <span class="price-original">R$ @l.OriginalPrice.Value.ToString("N2")</span>
+                                }
                             }
-                            <a class="btn btn-primary" href="@l.Url" target="_blank" rel="noopener">Ir à loja</a>
+                            else
+                            {
+                                <span class="price-current card-price--na">Verificar preço</span>
+                            }
+                            <a class="listing-go-btn" href="@l.Url" target="_blank" rel="noopener">
+                                Ir à loja →
+                            </a>
                         </div>
                     </div>
                 }
@@ -51,13 +81,15 @@
     {
         <section class="chart-section">
             <h2>Histórico de preços</h2>
-            <div class="chart-periods">
-                <button class="period-btn active" data-days="40">40 dias</button>
-                <button class="period-btn" data-days="90">3 meses</button>
-                <button class="period-btn" data-days="180">6 meses</button>
-                <button class="period-btn" data-days="365">1 ano</button>
+            <div class="chart-wrapper">
+                <div class="chart-periods">
+                    <button class="period-btn active" data-days="40">40 dias</button>
+                    <button class="period-btn" data-days="90">3 meses</button>
+                    <button class="period-btn" data-days="180">6 meses</button>
+                    <button class="period-btn" data-days="365">1 ano</button>
+                </div>
+                <canvas id="priceChart"></canvas>
             </div>
-            <div class="chart-wrapper"><canvas id="priceChart"></canvas></div>
         </section>
     }
 </div>
@@ -69,7 +101,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@@1"></script>
     <script>
     const ALL_DATASETS = @Html.Raw(historyJson);
-    const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899'];
+    const PALETTE = ['#2563EB','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899'];
     let chart;
 
     function buildDatasets(days) {
@@ -78,9 +110,10 @@
             label: ds.label,
             data: ds.data.filter(p => p.x >= cutoff).map(p => ({ x: p.x, y: p.y })),
             borderColor: PALETTE[i % PALETTE.length],
-            backgroundColor: 'transparent',
-            tension: 0.3,
+            backgroundColor: PALETTE[i % PALETTE.length] + '14',
+            tension: 0.35,
             pointRadius: 3,
+            fill: false,
         }));
     }
 
@@ -91,11 +124,25 @@
             type: 'line',
             data: { datasets: buildDatasets(days) },
             options: {
+                interaction: { mode: 'index', intersect: false },
                 scales: {
-                    x: { type: 'time', time: { unit: 'day' } },
-                    y: { ticks: { callback: v => 'R$ ' + v.toLocaleString('pt-BR') } }
+                    x: { type: 'time', time: { unit: 'day' },
+                         grid: { color: 'rgba(0,0,0,.04)' },
+                         ticks: { color: '#94A3B8', font: { size: 11 } } },
+                    y: { grid: { color: 'rgba(0,0,0,.04)' },
+                         ticks: { color: '#94A3B8', font: { size: 11 },
+                                  callback: v => 'R$ ' + v.toLocaleString('pt-BR') } }
                 },
-                plugins: { legend: { position: 'bottom' } }
+                plugins: {
+                    legend: { position: 'bottom',
+                              labels: { usePointStyle: true, pointStyle: 'circle',
+                                        font: { size: 12 }, padding: 20 } },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ' R$ ' + ctx.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+                        }
+                    }
+                }
             }
         });
     }
